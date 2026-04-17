@@ -28,6 +28,12 @@ const prisma = new PrismaClient({
   log: ['error']
 });
 
+prisma.$connect()
+  .then(() => console.log('✅ DB conectada'))
+  .catch(err => {
+    console.error('❌ Error conectando DB:', err);
+  });
+
 // ─── MIDDLEWARE GLOBAL ──────────────────────────────────────────────────────
 const allowedOrigins = [
   'http://localhost:5173',
