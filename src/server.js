@@ -91,9 +91,13 @@ app.use(errorHandler);
 const PORT = process.env.PORT;
 
 if (!PORT) {
-  console.error('❌ PORT no definido');
+  console.error('❌ PORT no definido en producción');
   process.exit(1);
 }
+
+app.listen(PORT, '0.0.0.0', () => {
+  logger.info(`🚀 Server running on port ${PORT}`);
+});
 
 app.listen(PORT, () => {
   logger.info(`🚀 Server running on port ${PORT}`);
