@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+// ─── USUARIOS Y AUTENTICACIÓN ──────────────────────────────────────────────
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(CASHIER)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales     Sale[]
+  quotes    Quote[]
+  invoices  Invoice[]
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  CASHIER
+  VIEWER
+}
+
+// ─── CATÁLOGOS ─────────────────────────────────────────────────────────────
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+
+  @@map("categories")
+}
+
+model Supplier {
+  id        Int       @id @default(autoincrement())
+  name      String
+  contact   String?
+  phone     String?
+  email     String?
+  address   String?
+  rfc       String?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  products  Product[]
+
+  @@map("suppliers")
+}
+
+// ─── INVENTARIO ────────────────────────────────────────────────────────────
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  sku         String   @unique
+  name        String
+  description String?
+  unit        String   @default("Pieza")
+  cost        Decimal  @db.Decimal(10, 2)
+  price       Decimal  @db.Decimal(10, 2)
+  stock       Int      @default(0)
+  minStock    Int      @default(5)
+  maxStock    Int?
+  barcode     String?  @unique
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categoryId  Int?
+  category    Category?  @relation(fields: [categoryId], references: [id])
+  supplierId  Int?
+  supplier    Supplier?  @relation(fields: [supplierId], references: [id])
+
+  saleItems     SaleItem[]
+  quoteItems    QuoteItem[]
+  invoiceItems  InvoiceItem[]
+  stockMovements StockMovement[]
+
+  @@map("products")
+}
+
+model StockMovement {
+  id        Int           @id @default(autoincrement())
+  type      MovementType
+  qty       Int
+  reason    String?
+  before    Int
+  after     Int
+  createdAt DateTime      @default(now())
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("stock_movements")
+}
+
+enum MovementType {
+  IN        // Entrada por compra
+  OUT       // Salida por venta
+  ADJUST    // Ajuste manual
+  RETURN    // Devolución
+}
+
+// ─── VENTAS ────────────────────────────────────────────────────────────────
+
+model Sale {
+  id          Int        @id @default(autoincrement())
+  folio       String     @unique
+  subtotal    Decimal    @db.Decimal(10, 2)
+  tax         Decimal    @db.Decimal(10, 2)
+  total       Decimal    @db.Decimal(10, 2)
+  payMethod   PayMethod  @default(CASH)
+  status      SaleStatus @default(COMPLETED)
+  notes       String?
+  createdAt   DateTime   @default(now())
+
+  userId      Int?
+  user        User?      @relation(fields: [userId], references: [id])
+  invoice     Invoice?
+
+  items       SaleItem[]
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id        Int     @id @default(autoincrement())
+  qty       Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+
+  saleId    Int
+  sale      Sale    @relation(fields: [saleId], references: [id])
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
+}
+
+enum PayMethod {
+  CASH
+  CARD
+  TRANSFER
+}
+
+enum SaleStatus {
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+// ─── COTIZACIONES ──────────────────────────────────────────────────────────
+
+model Quote {
+  id          Int         @id @default(autoincrement())
+  folio       String      @unique
+  clientName  String
+  clientRfc   String?
+  clientEmail String?
+  clientPhone String?
+  subtotal    Decimal     @db.Decimal(10, 2)
+  tax         Decimal     @db.Decimal(10, 2)
+  total       Decimal     @db.Decimal(10, 2)
+  notes       String?
+  validUntil  DateTime?
+  status      QuoteStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  userId      Int?
+  user        User?       @relation(fields: [userId], references: [id])
+
+  items       QuoteItem[]
+
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id        Int     @id @default(autoincrement())
+  qty       Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+
+  quoteId   Int
+  quote     Quote   @relation(fields: [quoteId], references: [id])
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("quote_items")
+}
+
+enum QuoteStatus {
+  PENDING
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+// ─── FACTURACIÓN CFDI ──────────────────────────────────────────────────────
+
+model Invoice {
+  id            Int           @id @default(autoincrement())
+  folio         String        @unique
+  uuid          String?       @unique    // UUID del SAT tras timbrar
+  pacFolio      String?                  // Folio del PAC
+  rfcReceptor   String
+  razonSocial   String
+  cfdiUse       String        @default("G03")
+  payForm       String        @default("01")
+  payMethod     String        @default("PUE")
+  regimenFiscal String        @default("601")
+  cpReceptor    String
+  subtotal      Decimal       @db.Decimal(10, 2)
+  tax           Decimal       @db.Decimal(10, 2)
+  total         Decimal       @db.Decimal(10, 2)
+  xmlUrl        String?
+  pdfUrl        String?
+  status        InvoiceStatus @default(DRAFT)
+  createdAt     DateTime      @default(now())
+
+  saleId        Int?          @unique
+  sale          Sale?         @relation(fields: [saleId], references: [id])
+  userId        Int?
+  user          User?         @relation(fields: [userId], references: [id])
+
+  items         InvoiceItem[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id            Int     @id @default(autoincrement())
+  description   String
+  qty           Decimal @db.Decimal(10, 3)
+  unitPrice     Decimal @db.Decimal(10, 2)
+  subtotal      Decimal @db.Decimal(10, 2)
+  taxRate       Decimal @db.Decimal(5, 4)  @default(0.1600)
+  taxAmount     Decimal @db.Decimal(10, 2)
+  claveUnidad   String  @default("H87")    // SAT: H87 = pieza
+  claveProdServ String  @default("31161500")
+
+  invoiceId     Int
+  invoice       Invoice @relation(fields: [invoiceId], references: [id])
+  productId     Int?
+  product       Product? @relation(fields: [productId], references: [id])
+
+  @@map("invoice_items")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  STAMPED    // Timbrada por PAC
+  CANCELLED  // Cancelada ante SAT
+}
