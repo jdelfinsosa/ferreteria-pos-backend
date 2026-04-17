@@ -44,17 +44,24 @@ app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://ferreteria-pos-frontend-gamma.vercel.app'
+    ];
+
     const isAllowed = allowedOrigins.some(o => origin.startsWith(o));
 
     if (isAllowed) {
       callback(null, true);
     } else {
-      console.log('❌ CORS bloqueado:', origin);
-      callback(new Error('No permitido por CORS'));
+      console.warn('⚠️ CORS rechazado:', origin);
+      callback(null, false); // ✅ NO ERROR
     }
   },
   credentials: true,
 }));
+
+app.options('*', cors());
 
 app.options('*', cors());
 app.use(express.json());
