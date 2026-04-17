@@ -88,7 +88,17 @@ app.get('/health', async (req, res) => {
 app.use(errorHandler);
 
 // ─── INICIO ─────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT;
+
+if (!PORT) {
+  console.error('❌ PORT no definido');
+  process.exit(1);
+}
+
+app.listen(PORT, () => {
+  logger.info(`🚀 Server running on port ${PORT}`);
+});
+
 app.listen(PORT, () => {
   logger.info(`🔧 Ferretería POS API corriendo en http://localhost:${PORT}`);
 });
