@@ -22,8 +22,22 @@ const app = express();
 const prisma = new PrismaClient();
 
 // ─── MIDDLEWARE GLOBAL ──────────────────────────────────────────────────────
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://ferreteria-pos-frontend-gamma.vercel.app'
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    // permitir requests sin origin (Postman, mobile apps, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('No permitido por CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());
