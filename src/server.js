@@ -28,18 +28,22 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // permitir requests sin origin (Postman, mobile apps, etc.)
+  origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
+    const isAllowed = allowedOrigins.some(o => origin.startsWith(o));
+
+    if (isAllowed) {
       callback(null, true);
     } else {
+      console.log('❌ CORS bloqueado:', origin);
       callback(new Error('No permitido por CORS'));
     }
   },
   credentials: true,
 }));
+
+app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
