@@ -109,5 +109,3 @@ process.on('SIGINT', async () => {
   logger.info('DB desconectada. Servidor detenido.');
   process.exit(0);
 });
-
-module.exports = app;
