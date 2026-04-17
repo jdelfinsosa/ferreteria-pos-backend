@@ -19,7 +19,14 @@ const { authenticate } = require('./middleware/auth');
 const logger = require('./utils/logger');
 
 const app = express();
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL
+    }
+  },
+  log: ['error']
+});
 
 // ─── MIDDLEWARE GLOBAL ──────────────────────────────────────────────────────
 const allowedOrigins = [
