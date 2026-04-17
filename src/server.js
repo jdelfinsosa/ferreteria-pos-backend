@@ -96,10 +96,6 @@ if (!PORT) {
 }
 
 app.listen(PORT, () => {
-  logger.info(`🚀 Server running on port ${PORT}`);
-});
-
-app.listen(PORT, () => {
   logger.info(`🔧 Ferretería POS API corriendo en http://localhost:${PORT}`);
 });
 
